@@ -24,19 +24,27 @@ const { getQueueDepths } = require('./services/queue');
 // Configure CORS for production
 const corsOptions = {
     origin: function (origin, callback) {
-        const allowedOrigins = [
-            'http://localhost:5173',              // Vite dev
-            'http://localhost:3000',              // Express dev
-            'http://localhost',                   // Docker local
-            'https://your-project.vercel.app',   // Update with your Vercel domain
-            process.env.FRONTEND_URL || ''        // Production frontend from env
-        ].filter(Boolean);
-
-        if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
+        // Always allow no origin (for same-origin requests, health checks, etc.)
+        if (!origin) {
+            return callback(null, true);
         }
+
+        // Local development - allow all
+        if (process.env.NODE_ENV !== 'production') {
+            return callback(null, true);
+        }
+
+        // Production - check origins
+        const isLocalhost = origin.includes('localhost') || origin.includes('127.0.0.1');
+        const isVercel = origin.includes('vercel.app');
+        const isRender = origin.includes('onrender.com');
+        const isConfiguredFrontend = process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL;
+
+        if (isLocalhost || isVercel || isRender || isConfiguredFrontend) {
+            return callback(null, true);
+        }
+
+        return callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
