@@ -85,7 +85,7 @@ Repeat **3 times** for workers 1, 2, and 3:
    - **Name**: `distributed-task-queue-worker-1` (2, 3 for others)
    - **Runtime**: Node
    - **Build Command**: `cd backend && npm ci`
-   - **Start Command**: `node src/worker-server.js` (run from backend directory)
+   - **Start Command**: `node backend/src/worker-server.js`
 4. Go to "Environment" → Add same variables as backend:
    ```
    NODE_ENV = production
