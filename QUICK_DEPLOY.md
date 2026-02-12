@@ -79,19 +79,25 @@ https://distributed-task-queue-api.onrender.com
 
 Repeat **3 times** for workers 1, 2, and 3:
 
-1. In Render Dashboard, click "New +" → "Background Worker"
+1. In Render Dashboard, click "New +" → "Web Service"
 2. Choose your GitHub repo again
 3. Configure:
    - **Name**: `distributed-task-queue-worker-1` (2, 3 for others)
    - **Runtime**: Node
    - **Build Command**: `cd backend && npm ci`
-   - **Start Command**: `cd backend && node src/worker.js`
-4. Go to "Environment" → Add same variables as backend PLUS:
+   - **Start Command**: `node src/worker-server.js` (run from backend directory)
+4. Go to "Environment" → Add same variables as backend:
    ```
-   WORKER_ID = worker-1
+   NODE_ENV = production
+   ATLAS_URI = [your MongoDB URI]
+   REDIS_URL = [your Redis URI]
+   NUM_WORKERS = 3
+   MAX_WORKERS = 8
+   AUTOSCALE_THRESHOLD = 20
    ```
-   (Change to 2, 3 for other workers)
-5. Click "Create Background Worker"
+5. Click "Create Web Service"
+
+✨ **Why Web Services?** Render Web Services have a free tier (auto-suspend after 15 min idle). Background Workers are paid ($7+/month). Workers run the same code with a lightweight HTTP health check endpoint.
 
 ## Step 6: Deploy Frontend to Vercel (2 min)
 
@@ -147,11 +153,13 @@ Your application is now live!
 | Service | Cost |
 |---------|------|
 | Vercel Frontend | Free |
-| Render API (Standard) | $7/month |
-| Render Workers ×3 (Starter) | Free ($21 if upgraded) |
-| Redis | Free-$7/month |
+| Render API (Web Service) | Free (+ $7/month if you need always-on) |
+| Render Workers ×3 (Web Services) | Free (auto-suspend after 15 min idle) |
+| Redis | Free (Redis Cloud free tier) |
 | MongoDB Atlas | Free (512MB) |
-| **Total** | **$7-$35/month** |
+| **Total** | **FREE** (or $7/month for always-on API) |
+
+**💰 Pro Tip**: Everything runs free with auto-suspend. Add $7/month to keep API always-on (workers auto-resume when jobs arrive via Redis)
 
 ---
 
