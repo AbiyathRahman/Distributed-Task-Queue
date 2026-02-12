@@ -12,7 +12,7 @@ const { getJob, updateJob, moveToDeadLetter, connectToServer } = require('./serv
 const { dequeue, enqueue } = require('./services/queue');
 const { startHeartbeat, setCurrentJob, clearCurrentJob } = require('./services/workerHeartbeat');
 
-const WORKER_ID = `worker-${process.pid}`;
+const WORKER_ID = process.env.WORKER_ID || `worker-${process.pid}`;
 
 async function processJob(jobId) {
     const job = await getJob(jobId);

@@ -5,7 +5,11 @@ const http = require('http');
 const app = express();
 const server = http.createServer(app);
 const { WebSocketServer } = require('ws');
-const wss = new WebSocketServer({ server, path: '/ws' });
+const wss = new WebSocketServer({
+    server,
+    path: '/ws',
+    perMessageDeflate: false
+});
 const redis = require('ioredis');
 
 // Load .env file if it exists (for local development)
@@ -56,6 +60,19 @@ app.use(express.json());
 
 // Initialize WebSocket broadcast
 setWebSocketServer(wss);
+
+// Handle WebSocket connections
+wss.on('connection', (ws) => {
+    console.log('WebSocket client connected');
+
+    ws.on('close', () => {
+        console.log('WebSocket client disconnected');
+    });
+
+    ws.on('error', (error) => {
+        console.error('WebSocket error:', error);
+    });
+});
 
 // Subscribe to worker heartbeats via Redis Pub/Sub
 const redisSubscriber = new redis(process.env.REDIS_URL);
