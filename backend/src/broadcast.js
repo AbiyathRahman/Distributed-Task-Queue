@@ -5,11 +5,17 @@ function setWebSocketServer(server) {
 }
 
 function broadcast(event, data) {
-    if (!wss) return;
+    if (!wss || !wss.clients) return;
     const msg = JSON.stringify({ event, data, ts: Date.now() });
-    wss.clients.forEach(client => {
-        if (client.readyState === require('ws').WebSocket.OPEN) client.send(msg);
-    });
+    try {
+        wss.clients.forEach(client => {
+            if (client.readyState === require('ws').WebSocket.OPEN) {
+                client.send(msg);
+            }
+        });
+    } catch (error) {
+        console.error('Broadcast error:', error);
+    }
 }
 
 module.exports = { setWebSocketServer, broadcast };

@@ -8,7 +8,33 @@ const { WebSocketServer } = require('ws');
 const wss = new WebSocketServer({
     server,
     path: '/ws',
-    perMessageDeflate: false
+    perMessageDeflate: false,
+    verifyClient: (info, callback) => {
+        const origin = info.req.headers.origin;
+
+        // Allow requests without origin (same-origin or tools)
+        if (!origin) {
+            return callback(true);
+        }
+
+        // Local development - allow all
+        if (process.env.NODE_ENV !== 'production') {
+            return callback(true);
+        }
+
+        // Production - check origins
+        const isLocalhost = origin.includes('localhost') || origin.includes('127.0.0.1');
+        const isVercel = origin.includes('vercel.app');
+        const isRender = origin.includes('onrender.com');
+        const isConfiguredFrontend = process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL;
+
+        if (isLocalhost || isVercel || isRender || isConfiguredFrontend) {
+            return callback(true);
+        }
+
+        console.warn(`WebSocket connection rejected from origin: ${origin}`);
+        return callback(false, 403, 'Origin not allowed');
+    }
 });
 const redis = require('ioredis');
 
@@ -76,6 +102,15 @@ wss.on('connection', (ws) => {
 
 // Subscribe to worker heartbeats via Redis Pub/Sub
 const redisSubscriber = new redis(process.env.REDIS_URL);
+
+redisSubscriber.on('ready', () => {
+    console.log('Redis Pub/Sub connection ready');
+});
+
+redisSubscriber.on('error', (err) => {
+    console.error('Redis Pub/Sub connection error:', err);
+});
+
 redisSubscriber.subscribe('worker-heartbeats', (err, count) => {
     if (err) {
         console.error('Failed to subscribe to worker-heartbeats:', err);
