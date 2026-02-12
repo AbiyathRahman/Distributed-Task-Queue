@@ -2,7 +2,7 @@ const express = require('express');
 const jobsRouter = express.Router();
 const db = require('../services/db');
 const queue = require('../services/queue');
-const { broadcast } = require('../server');
+const { broadcast } = require('../broadcast');
 
 // POST /jobs - Create a new job
 jobsRouter.post('/', async (req, res) => {
@@ -72,13 +72,77 @@ jobsRouter.get('/', async (req, res) => {
     }
 });
 
+// GET /jobs/metrics - Get job metrics
+jobsRouter.get('/metrics', async (req, res) => {
+    try {
+        const metrics = await db.getMetrics();
+        res.json(metrics);
+    } catch (err) {
+        console.error('Error fetching metrics:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // GET /jobs/queue-depths - Get current queue depths
 jobsRouter.get('/queue-depths', async (req, res) => {
     try {
         const depths = await queue.getQueueDepths();
-        res.json(depths);
+
+        // Ensure all values are present and are numbers
+        const response = {
+            high: depths.high || 0,
+            medium: depths.medium || 0,
+            low: depths.low || 0,
+            total: (depths.high || 0) + (depths.medium || 0) + (depths.low || 0)
+        };
+
+        res.json(response);
     } catch (err) {
         console.error('Error fetching queue depths:', err);
+        // Return empty but valid response instead of error
+        res.json({ high: 0, medium: 0, low: 0, total: 0 });
+    }
+});
+
+// GET /jobs/dead-letter - Get all jobs in dead letter queue
+jobsRouter.get('/dead-letter/list', async (req, res) => {
+    try {
+        const dbInstance = db.getDb();
+        const deadLetterCollection = dbInstance.collection('dead_letter');
+
+        // Get dead letter jobs sorted by most recent first
+        const deadLetterJobs = await deadLetterCollection
+            .find({})
+            .sort({ failedAt: -1 })
+            .limit(100)
+            .toArray();
+
+        res.json(deadLetterJobs);
+    } catch (err) {
+        console.error('Error fetching dead letter jobs:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /jobs/requeue/:id - Requeue a job from dead letter queue
+jobsRouter.post('/requeue/:id', async (req, res) => {
+    try {
+        const newJob = await db.requeueJob(req.params.id);
+
+        // Enqueue the new job
+        await queue.enqueue(newJob._id.toString(), newJob.priority);
+
+        // Broadcast job created event
+        broadcast('job_created', {
+            id: newJob._id,
+            type: newJob.type,
+            priority: newJob.priority,
+            status: 'pending'
+        });
+
+        res.json({ message: 'Job requeued successfully', job: newJob });
+    } catch (err) {
+        console.error('Error requeueing job:', err);
         res.status(500).json({ error: err.message });
     }
 });

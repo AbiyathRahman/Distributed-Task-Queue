@@ -1,32 +1,144 @@
 version: '3.8'
+
 services:
+  # Database Services
   mongodb:
     image: mongo:7
-    ports: ["27017:27017"]
+    container_name: dtq-mongodb
+    ports:
+      - "27017:27017"
     volumes:
       - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: taskqueue
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dtq-network
 
   redis:
     image: redis:7-alpine
-    ports: ["6379:6379"]
+    container_name: dtq-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: redis-cli ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dtq-network
 
-  api:
-    build: ./backend
-    ports: ["3001:3001"]
-    depends_on: [mongodb, redis]
+  # Backend Services
+  backend-server:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dtq-backend-server
+    ports:
+      - "3000:3000"
+      - "8080:8080"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
-      MONGODB_URI: mongodb://mongodb:27017/taskqueue
+      NODE_ENV: production
+      PORT: 3000
+      ATLAS_URI: mongodb://mongodb:27017/taskqueue
       REDIS_URL: redis://redis:6379
+      NUM_WORKERS: 3
+      MAX_WORKERS: 8
+      AUTOSCALE_THRESHOLD: 20
+    command: node src/server.js
+    restart: unless-stopped
+    networks:
+      - dtq-network
 
-  worker:
-    build: ./backend
+  # Worker Services (scale as needed)
+  backend-worker-1:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dtq-backend-worker-1
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      ATLAS_URI: mongodb://mongodb:27017/taskqueue
+      REDIS_URL: redis://redis:6379
+      WORKER_ID: worker-1
     command: node src/worker.js
-    deploy:
-      replicas: 3 # Run 3 workers in parallel!
-    depends_on: [mongodb, redis]
+    restart: unless-stopped
+    networks:
+      - dtq-network
+
+  backend-worker-2:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dtq-backend-worker-2
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
-      MONGODB_URI: mongodb://mongodb:27017/taskqueue
+      NODE_ENV: production
+      ATLAS_URI: mongodb://mongodb:27017/taskqueue
       REDIS_URL: redis://redis:6379
+      WORKER_ID: worker-2
+    command: node src/worker.js
+    restart: unless-stopped
+    networks:
+      - dtq-network
+
+  backend-worker-3:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dtq-backend-worker-3
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      ATLAS_URI: mongodb://mongodb:27017/taskqueue
+      REDIS_URL: redis://redis:6379
+      WORKER_ID: worker-3
+    command: node src/worker.js
+    restart: unless-stopped
+    networks:
+      - dtq-network
+
+  # Frontend Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: dtq-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend-server
+    environment:
+      NODE_ENV: production
+    restart: unless-stopped
+    networks:
+      - dtq-network
+
+networks:
+  dtq-network:
+    driver: bridge
 
 volumes:
   mongo_data:

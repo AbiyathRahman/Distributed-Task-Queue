@@ -1,30 +1,72 @@
 const express = require('express');
+const path = require('path');
+const fs = require('fs');
 const app = express();
 const { WebSocketServer } = require('ws');
-const wss = new WebSocketServer({ server });
-require('dotenv').config({ path: './.env' });
+const wss = new WebSocketServer({ port: 8080 });
+const redis = require('ioredis');
+
+// Load .env file if it exists (for local development)
+const envPath = path.join(__dirname, '../../.env');
+if (fs.existsSync(envPath)) {
+    require('dotenv').config({ path: envPath });
+}
+
 const db = require('./services/db');
 const jobsRouter = require('./routes/jobs');
+const { setWebSocketServer, broadcast } = require('./broadcast');
 const port = process.env.PORT || 3000;
 const cors = require('cors');
-app.use(cors(
-    {
-        origin: "http://localhost:5173",
-        methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
-        credentials: true,
-        optionsSuccessStatus: 204,
-        allowedHeaders: ["Content-Type", "Authorization"]
-    }
-));
+const { getQueueDepths } = require('./services/queue');
 
+// Configure CORS for production
+const corsOptions = {
+    origin: function (origin, callback) {
+        const allowedOrigins = [
+            'http://localhost:5173',              // Vite dev
+            'http://localhost:3000',              // Express dev
+            'http://localhost',                   // Docker local
+            'https://your-project.vercel.app',   // Update with your Vercel domain
+            process.env.FRONTEND_URL || ''        // Production frontend from env
+        ].filter(Boolean);
+
+        if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
-function broadcast(event, data) {
-    const msg = JSON.stringify({ event, data, ts: Date.now() });
-    wss.clients.forEach(client => {
-        if (client.readyState === WebSocket.OPEN) client.send(msg);
-    });
-}
+// Initialize WebSocket broadcast
+setWebSocketServer(wss);
+
+// Subscribe to worker heartbeats via Redis Pub/Sub
+const redisSubscriber = new redis(process.env.REDIS_URL);
+redisSubscriber.subscribe('worker-heartbeats', (err, count) => {
+    if (err) {
+        console.error('Failed to subscribe to worker-heartbeats:', err);
+    } else {
+        console.log(`Subscribed to ${count} channels`);
+    }
+});
+
+redisSubscriber.on('message', (channel, message) => {
+    if (channel === 'worker-heartbeats') {
+        try {
+            const heartbeat = JSON.parse(message);
+            broadcast('worker_heartbeat', heartbeat);
+        } catch (error) {
+            console.error('Error parsing worker heartbeat:', error);
+        }
+    }
+});
 
 // Poll queue depths + broadcast every 2 seconds
 setInterval(async () => {
@@ -36,14 +78,27 @@ app.get('/', (req, res) => {
     res.send('Hello World!');
 });
 
-app.listen(port, () => {
-    db.connectToServer(function (err) {
-        if (err) console.log(err);
+// Health check endpoint for Docker
+app.get('/health', (req, res) => {
+    res.status(200).json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime()
     });
-    console.log(`Distributed Task Queue app listening on port ${port}`);
-
 });
+
 app.use('/jobs', jobsRouter);
-module.exports = { broadcast };
+
+// Connect to database first, then start the server
+db.connectToServer((err) => {
+    if (err) {
+        console.error('Failed to connect to MongoDB:', err);
+        process.exit(1);
+    }
+
+    app.listen(port, () => {
+        console.log(`Distributed Task Queue app listening on port ${port}`);
+    });
+});
 
 

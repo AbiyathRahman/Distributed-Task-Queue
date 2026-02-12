@@ -1,0 +1,17 @@
+node_modules
+npm - debug.log
+    .git
+backend
+docker - compose.yml
+Dockerfile
+    .dockerignore
+README.md
+    .env
+    .env.local
+    .DS_Store
+    .vscode
+    .idea
+coverage
+DOCKER_SETUP.md
+DEPLOYMENT_GUIDE.md
+render.yaml

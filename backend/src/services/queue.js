@@ -1,3 +1,12 @@
+const path = require('path');
+const fs = require('fs');
+
+// Load .env file if it exists (for local development)
+const envPath = path.join(__dirname, '../../../.env');
+if (fs.existsSync(envPath)) {
+    require('dotenv').config({ path: envPath });
+}
+
 const redis = require('ioredis');
 const client = new redis(process.env.REDIS_URL);
 
@@ -21,12 +30,25 @@ async function dequeue(timeout = 5) {
 }
 
 async function getQueueDepths() {
-    const [high, medium, low] = await Promise.all([
-        client.llen(QUEUES.high),
-        client.llen(QUEUES.medium),
-        client.llen(QUEUES.low)
-    ]);
-    return { high, medium, low, total: high + medium + low };
+    try {
+        const [high, medium, low] = await Promise.all([
+            client.llen(QUEUES.high),
+            client.llen(QUEUES.medium),
+            client.llen(QUEUES.low)
+        ]);
+
+        const depths = {
+            high: parseInt(high) || 0,
+            medium: parseInt(medium) || 0,
+            low: parseInt(low) || 0
+        };
+        depths.total = depths.high + depths.medium + depths.low;
+
+        return depths;
+    } catch (error) {
+        console.error('Error getting queue depths from Redis:', error);
+        return { high: 0, medium: 0, low: 0, total: 0 };
+    }
 }
 
 module.exports = {

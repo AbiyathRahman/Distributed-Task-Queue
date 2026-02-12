@@ -1,0 +1,75 @@
+services:
+  # Main API Server
+  - type: web
+    name: distributed-task-queue-api
+    env: node
+    plan: standard
+    buildCommand: cd backend && npm ci
+    startCommand: cd backend && node src/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: ATLAS_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: NUM_WORKERS
+        value: 3
+      - key: MAX_WORKERS
+        value: 8
+      - key: AUTOSCALE_THRESHOLD
+        value: 20
+    healthCheckPath: /health
+
+  # Worker Replica 1
+  - type: background_worker
+    name: distributed-task-queue-worker-1
+    env: node
+    plan: standard
+    buildCommand: cd backend && npm ci
+    startCommand: cd backend && node src/worker.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ATLAS_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: WORKER_ID
+        value: worker-1
+
+  # Worker Replica 2
+  - type: background_worker
+    name: distributed-task-queue-worker-2
+    env: node
+    plan: standard
+    buildCommand: cd backend && npm ci
+    startCommand: cd backend && node src/worker.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ATLAS_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: WORKER_ID
+        value: worker-2
+
+  # Worker Replica 3
+  - type: background_worker
+    name: distributed-task-queue-worker-3
+    env: node
+    plan: standard
+    buildCommand: cd backend && npm ci
+    startCommand: cd backend && node src/worker.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ATLAS_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: WORKER_ID
+        value: worker-3

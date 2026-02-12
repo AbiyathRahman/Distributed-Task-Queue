@@ -1,3 +1,12 @@
+const path = require('path');
+const fs = require('fs');
+
+// Load .env file if it exists (for local development)
+const envPath = path.join(__dirname, '../../../.env');
+if (fs.existsSync(envPath)) {
+    require('dotenv').config({ path: envPath });
+}
+
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const dns = require('dns');
 dns.setServers(['8.8.8.8']);
@@ -111,6 +120,38 @@ module.exports = {
             runningJobs,
             deadLetterCount
         };
+    },
+
+    requeueJob: async function (deadLetterJobId) {
+        const deadLetterCollection = _db.collection("dead_letter");
+        const jobsCollection = _db.collection("jobs");
+
+        // Find the dead letter entry
+        const id = typeof deadLetterJobId === 'string' ? new ObjectId(deadLetterJobId) : deadLetterJobId;
+        const deadLetterEntry = await deadLetterCollection.findOne({ jobId: id });
+
+        if (!deadLetterEntry) {
+            throw new Error(`Job not found in dead letter queue: ${deadLetterJobId}`);
+        }
+
+        // Create a new job with the same type and payload, reset attempts
+        const newJobData = {
+            type: deadLetterEntry.jobType,
+            payload: deadLetterEntry.payload,
+            priority: deadLetterEntry.priority || 'medium',
+            status: 'pending',
+            attempts: 0,
+            maxAttempts: deadLetterEntry.originalJob?.maxAttempts || 3,
+            createdAt: new Date(),
+            requeuedFrom: deadLetterJobId // Track that this was requeued
+        };
+
+        const result = await jobsCollection.insertOne(newJobData);
+
+        // Remove from dead letter queue
+        await deadLetterCollection.deleteOne({ jobId: id });
+
+        return { ...newJobData, _id: result.insertedId };
     },
 
     close: async function () {
