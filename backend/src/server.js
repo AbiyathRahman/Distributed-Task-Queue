@@ -1,9 +1,11 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const http = require('http');
 const app = express();
+const server = http.createServer(app);
 const { WebSocketServer } = require('ws');
-const wss = new WebSocketServer({ port: 8080 });
+const wss = new WebSocketServer({ server, path: '/ws' });
 const redis = require('ioredis');
 
 // Load .env file if it exists (for local development)
@@ -96,8 +98,9 @@ db.connectToServer((err) => {
         process.exit(1);
     }
 
-    app.listen(port, () => {
+    server.listen(port, () => {
         console.log(`Distributed Task Queue app listening on port ${port}`);
+        console.log(`WebSocket available at ws://localhost:${port}/ws`);
     });
 });
 
