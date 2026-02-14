@@ -8,9 +8,6 @@ services:
         value: https://distributed-task-queue-api.onrender.com
       - key: VITE_WS_URL
         value: wss://distributed-task-queue-api.onrender.com/ws
-    dockerArgs:
-      - VITE_API_BASE=https://distributed-task-queue-api.onrender.com
-      - VITE_WS_URL=wss://distributed-task-queue-api.onrender.com/ws
 
   # Main API Server
   - type: web

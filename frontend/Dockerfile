@@ -5,14 +5,6 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Accept build arguments
-ARG VITE_API_BASE=http://localhost:3000
-ARG VITE_WS_URL=ws://localhost:8080
-
-# Set as environment variables for the build
-ENV VITE_API_BASE=$VITE_API_BASE
-ENV VITE_WS_URL=$VITE_WS_URL
-
 # Copy package files
 COPY package.json package-lock.json* ./
 

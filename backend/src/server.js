@@ -11,35 +11,28 @@ const wss = new WebSocketServer({
     perMessageDeflate: false,
     verifyClient: (info, callback) => {
         const origin = info.req.headers.origin;
-        const referer = info.req.headers.referer;
-        console.log(`[WS] Connection attempt - Origin: ${origin}, Referer: ${referer}`);
 
-        // Allow requests without origin (same-origin, extensions, mobile apps, etc.)
+        // Allow requests without origin (same-origin or tools)
         if (!origin) {
-            console.log('[WS] ✅ Allowing connection with no origin');
             return callback(true);
         }
 
         // Local development - allow all
         if (process.env.NODE_ENV !== 'production') {
-            console.log('[WS] ✅ Development mode - allowing all origins');
             return callback(true);
         }
 
-        // Production - be permissive to allow various scenarios
+        // Production - check origins
         const isLocalhost = origin.includes('localhost') || origin.includes('127.0.0.1');
         const isVercel = origin.includes('vercel.app');
         const isRender = origin.includes('onrender.com');
-        const isConfiguredFrontend = process.env.FRONTEND_URL && origin.includes(process.env.FRONTEND_URL.replace(/https?:\/\//, ''));
-
-        console.log(`[WS] Checks - localhost: ${isLocalhost}, vercel: ${isVercel}, render: ${isRender}, configured: ${isConfiguredFrontend}`);
+        const isConfiguredFrontend = process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL;
 
         if (isLocalhost || isVercel || isRender || isConfiguredFrontend) {
-            console.log(`[WS] ✅ Allowing origin: ${origin}`);
             return callback(true);
         }
 
-        console.warn(`[WS] ❌ Connection rejected from origin: ${origin}`);
+        console.warn(`WebSocket connection rejected from origin: ${origin}`);
         return callback(false, 403, 'Origin not allowed');
     }
 });
