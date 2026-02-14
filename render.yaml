@@ -1,4 +1,14 @@
 services:
+  # Frontend
+  - type: web
+    name: distributed-task-queue-frontend
+    dockerfilePath: ./frontend/Dockerfile
+    envVars:
+      - key: VITE_API_BASE
+        value: https://distributed-task-queue-api.onrender.com
+      - key: VITE_WS_URL
+        value: wss://distributed-task-queue-api.onrender.com/ws
+
   # Main API Server
   - type: web
     name: distributed-task-queue-api
@@ -11,6 +21,8 @@ services:
         value: production
       - key: PORT
         value: 3000
+      - key: FRONTEND_URL
+        value: https://distributed-task-queue-frontend.onrender.com
       - key: ATLAS_URI
         sync: false
       - key: REDIS_URL

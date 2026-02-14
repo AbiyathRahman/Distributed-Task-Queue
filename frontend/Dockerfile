@@ -14,9 +14,6 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Copy environment file for Docker
-COPY .env.docker .env.local
-
 # Build for production
 RUN npm run build
 
