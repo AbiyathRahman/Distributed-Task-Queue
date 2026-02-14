@@ -6,7 +6,6 @@ export function useWebSocket(url) {
     const wsRef = useRef(null);
     const reconnectTimeoutRef = useRef(null);
     const reconnectAttemptsRef = useRef(0);
-    const maxReconnectAttemptsRef = useRef(5);
 
     useEffect(() => {
         const connectWS = () => {
@@ -20,7 +19,7 @@ export function useWebSocket(url) {
                 ws.onopen = () => {
                     setConnected(true);
                     reconnectAttemptsRef.current = 0; // Reset on successful connection
-                    console.log('✅ WebSocket connected');
+                    console.log('✅ WebSocket connected to', url);
                 };
 
                 ws.onmessage = (event) => {
@@ -39,16 +38,12 @@ export function useWebSocket(url) {
 
                 ws.onclose = () => {
                     setConnected(false);
-                    // Use exponential backoff: 2s, 4s, 8s, 16s, 32s
+                    // Use exponential backoff: 2s, 4s, 8s, 16s, 32s, then cap at 32s
                     const delay = Math.min(2000 * Math.pow(2, reconnectAttemptsRef.current), 32000);
                     reconnectAttemptsRef.current++;
 
-                    if (reconnectAttemptsRef.current <= maxReconnectAttemptsRef.current) {
-                        console.log(`🔄 WebSocket disconnected. Attempting to reconnect in ${delay}ms...`);
-                        reconnectTimeoutRef.current = setTimeout(connectWS, delay);
-                    } else {
-                        console.error('❌ WebSocket: Max reconnection attempts exceeded');
-                    }
+                    console.log(`🔄 WebSocket disconnected. Attempting to reconnect in ${delay}ms... (attempt ${reconnectAttemptsRef.current})`);
+                    reconnectTimeoutRef.current = setTimeout(connectWS, delay);
                 };
 
                 wsRef.current = ws;

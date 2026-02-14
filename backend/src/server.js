@@ -11,32 +11,35 @@ const wss = new WebSocketServer({
     perMessageDeflate: false,
     verifyClient: (info, callback) => {
         const origin = info.req.headers.origin;
-        console.log(`WebSocket connection attempt from origin: ${origin}`);
+        const referer = info.req.headers.referer;
+        console.log(`[WS] Connection attempt - Origin: ${origin}, Referer: ${referer}`);
 
-        // Allow requests without origin (same-origin or tools)
+        // Allow requests without origin (same-origin, extensions, mobile apps, etc.)
         if (!origin) {
-            console.log('WebSocket: Allowing connection with no origin');
+            console.log('[WS] ✅ Allowing connection with no origin');
             return callback(true);
         }
 
         // Local development - allow all
         if (process.env.NODE_ENV !== 'production') {
-            console.log('WebSocket: Development mode - allowing all origins');
+            console.log('[WS] ✅ Development mode - allowing all origins');
             return callback(true);
         }
 
-        // Production - be more permissive
+        // Production - be permissive to allow various scenarios
         const isLocalhost = origin.includes('localhost') || origin.includes('127.0.0.1');
         const isVercel = origin.includes('vercel.app');
         const isRender = origin.includes('onrender.com');
-        const isConfiguredFrontend = process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL;
+        const isConfiguredFrontend = process.env.FRONTEND_URL && origin.includes(process.env.FRONTEND_URL.replace(/https?:\/\//, ''));
+
+        console.log(`[WS] Checks - localhost: ${isLocalhost}, vercel: ${isVercel}, render: ${isRender}, configured: ${isConfiguredFrontend}`);
 
         if (isLocalhost || isVercel || isRender || isConfiguredFrontend) {
-            console.log(`WebSocket: Allowing origin: ${origin}`);
+            console.log(`[WS] ✅ Allowing origin: ${origin}`);
             return callback(true);
         }
 
-        console.warn(`WebSocket connection rejected from origin: ${origin}`);
+        console.warn(`[WS] ❌ Connection rejected from origin: ${origin}`);
         return callback(false, 403, 'Origin not allowed');
     }
 });
