@@ -149,7 +149,7 @@ app.get('/health', (req, res) => {
     });
 });
 
-app.use('/jobs', jobsRouter);
+app.use('/api/jobs', jobsRouter);
 
 // Connect to database first, then start the server
 db.connectToServer((err) => {
