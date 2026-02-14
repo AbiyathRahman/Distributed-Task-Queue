@@ -11,24 +11,28 @@ const wss = new WebSocketServer({
     perMessageDeflate: false,
     verifyClient: (info, callback) => {
         const origin = info.req.headers.origin;
+        console.log(`WebSocket connection attempt from origin: ${origin}`);
 
         // Allow requests without origin (same-origin or tools)
         if (!origin) {
+            console.log('WebSocket: Allowing connection with no origin');
             return callback(true);
         }
 
         // Local development - allow all
         if (process.env.NODE_ENV !== 'production') {
+            console.log('WebSocket: Development mode - allowing all origins');
             return callback(true);
         }
 
-        // Production - check origins
+        // Production - be more permissive
         const isLocalhost = origin.includes('localhost') || origin.includes('127.0.0.1');
         const isVercel = origin.includes('vercel.app');
         const isRender = origin.includes('onrender.com');
         const isConfiguredFrontend = process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL;
 
         if (isLocalhost || isVercel || isRender || isConfiguredFrontend) {
+            console.log(`WebSocket: Allowing origin: ${origin}`);
             return callback(true);
         }
 
@@ -149,7 +153,7 @@ app.get('/health', (req, res) => {
     });
 });
 
-app.use('/api/jobs', jobsRouter);
+app.use('/jobs', jobsRouter);
 
 // Connect to database first, then start the server
 db.connectToServer((err) => {
