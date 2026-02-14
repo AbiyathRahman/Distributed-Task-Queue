@@ -7,7 +7,7 @@ import { WorkerStatus } from './components/WorkerStatus';
 import { DeadLetterQueue } from './components/DeadLetterQueue';
 import { useWebSocket } from './hooks/useWebSocket';
 
-const WS_URL = 'wss://distributed-task-queue-api.onrender.com/ws';
+const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3000/ws';
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000';
 
 export default function App() {
