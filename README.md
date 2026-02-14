@@ -4,7 +4,7 @@ A production-pattern backend system demonstrating distributed job processing, fa
 
 🔗 **[Live Demo](https://distributed-task-queue-vgzo-mg0jihspk-abiyath-rahmans-projects.vercel.app/)** | 📡 **[API](https://distributed-task-queue.onrender.com)**
 
-![Dashboard Preview](./screenshots/dashboard.png)
+
 
 ## Overview
 
