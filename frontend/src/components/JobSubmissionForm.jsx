@@ -12,7 +12,7 @@ const JOB_TYPES = [
 
 const PRIORITIES = ['high', 'medium', 'low'];
 
-export function JobSubmissionForm({ onJobCreated }) {
+export function JobSubmissionForm() {
     const [jobType, setJobType] = useState('send_email');
     const [priority, setPriority] = useState('medium');
     const [payload, setPayload] = useState({});
@@ -67,7 +67,6 @@ export function JobSubmissionForm({ onJobCreated }) {
 
             setMessage(`✅ Job created: ${response.data._id}`);
             setPayload({});
-            onJobCreated?.();
         } catch (error) {
             setMessage(`❌ Error: ${error.response?.data?.error || error.message}`);
         } finally {

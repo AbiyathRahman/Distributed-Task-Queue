@@ -1,57 +1,11 @@
-import { useEffect, useState } from 'react';
-import axios from 'axios';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000';
-
-export function QueueDepth({ queueUpdated }) {
-    const [depths, setDepths] = useState({
-        high: 0,
-        medium: 0,
-        low: 0,
-    });
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-
-    const fetchQueueDepths = async () => {
-        try {
-            const response = await axios.get(`${API_BASE}/jobs/queue-depths`);
-
-            // Ensure all values are numbers
-            const data = {
-                high: parseInt(response.data.high) || 0,
-                medium: parseInt(response.data.medium) || 0,
-                low: parseInt(response.data.low) || 0,
-            };
-
-            setDepths(data);
-            setError(null);
-        } catch (error) {
-            console.error('Error fetching queue depths:', error);
-            setError(error.message);
-            // Set defaults on error
-            setDepths({ high: 0, medium: 0, low: 0 });
-        } finally {
-            setLoading(false);
-        }
+export function QueueDepth({ queueDepths = { high: 0, medium: 0, low: 0 } }) {
+    const depths = {
+        high: parseInt(queueDepths.high) || 0,
+        medium: parseInt(queueDepths.medium) || 0,
+        low: parseInt(queueDepths.low) || 0,
     };
-
-    useEffect(() => {
-        fetchQueueDepths();
-    }, [queueUpdated]);
-
-    useEffect(() => {
-        const interval = setInterval(fetchQueueDepths, 2000);
-        return () => clearInterval(interval);
-    }, []);
-
-    if (loading) {
-        return <div className="p-4 bg-gray-100 rounded">Loading queue depths...</div>;
-    }
-
-    if (error) {
-        return <div className="p-4 bg-red-100 rounded text-red-700">Error: {error}</div>;
-    }
 
     const chartData = [
         { name: 'High', count: depths.high || 0 },

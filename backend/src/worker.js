@@ -10,7 +10,6 @@ if (fs.existsSync(envPath)) {
 const { jobHandlers } = require('./services/jobHandler');
 const { getJob, updateJob, moveToDeadLetter, connectToServer } = require('./services/db');
 const { dequeue, enqueue } = require('./services/queue');
-const { startHeartbeat, setCurrentJob, clearCurrentJob } = require('./services/workerHeartbeat');
 
 const WORKER_ID = process.env.WORKER_ID || `worker-${process.pid}`;
 
@@ -18,11 +17,9 @@ async function processJob(jobId) {
     const job = await getJob(jobId);
     if (!job) {
         console.error(`Job ${jobId} not found in DB`);
-        clearCurrentJob();
         return;
     }
 
-    setCurrentJob(jobId);
     await updateJob(jobId, { status: 'running', workerId: WORKER_ID, startedAt: new Date() });
     try {
         const handler = jobHandlers[job.type];
@@ -41,8 +38,6 @@ async function processJob(jobId) {
                 enqueue(jobId, job.priority);
             }, delay);
         }
-    } finally {
-        clearCurrentJob();
     }
 }
 
@@ -58,8 +53,6 @@ async function workerLoop() {
         });
     });
 
-    // Start sending heartbeats
-    startHeartbeat(WORKER_ID);
     console.log(`${WORKER_ID} started`);
 
     while (true) {

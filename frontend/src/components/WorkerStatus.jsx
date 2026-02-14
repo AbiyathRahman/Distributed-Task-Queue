@@ -1,49 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 
-export function WorkerStatus({ wsMessages }) {
-    const [workers, setWorkers] = useState({});
-    const [loading, setLoading] = useState(false);
-
-    // Listen to WebSocket messages for worker heartbeats
-    useEffect(() => {
-        if (!wsMessages || wsMessages.length === 0) return;
-
-        wsMessages.forEach(msg => {
-            if (msg.event === 'worker_heartbeat') {
-                const { data } = msg;
-                setWorkers(prev => ({
-                    ...prev,
-                    [data.workerId]: {
-                        ...data,
-                        lastSeen: new Date().getTime()
-                    }
-                }));
-            }
-        });
-    }, [wsMessages]);
-
-    // Remove workers that haven't sent a heartbeat in 15+ seconds (likely crashed)
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setWorkers(prev => {
-                const now = new Date().getTime();
-                const filtered = {};
-
-                Object.entries(prev).forEach(([workerId, worker]) => {
-                    const timeSinceLastHeartbeat = now - (worker.lastSeen || 0);
-                    if (timeSinceLastHeartbeat < 15000) { // 15 second timeout
-                        filtered[workerId] = worker;
-                    }
-                });
-
-                return filtered;
-            });
-        }, 5000);
-
-        return () => clearInterval(interval);
-    }, []);
-
-    const workerList = Object.values(workers);
+export function WorkerStatus({ workers = [] }) {
+    const workerList = useMemo(() => {
+        if (Array.isArray(workers)) {
+            return workers;
+        }
+        return Object.values(workers || {});
+    }, [workers]);
 
     return (
         <div style={{ backgroundColor: 'var(--surface)', padding: '1.5rem', borderRadius: '0.5rem', border: '1px solid var(--border)', borderLeft: '3px solid var(--accent)' }}>
@@ -54,7 +17,7 @@ export function WorkerStatus({ wsMessages }) {
                 ) : (
                     workerList.map(worker => (
                         <div
-                            key={worker.workerId}
+                            key={worker.id}
                             style={{
                                 backgroundColor: 'var(--surface-2)',
                                 padding: '1rem',
@@ -69,13 +32,17 @@ export function WorkerStatus({ wsMessages }) {
                             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--surface-2)'}
                         >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
-                                <span className="font-mono" style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--accent)' }}>{worker.workerId}</span>
+                                <span className="font-mono" style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--accent)' }}>{worker.id}</span>
                                 <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>|</span>
                                 <span style={{ fontSize: '0.875rem', color: 'var(--text)' }}>
-                                    {worker.status === 'idle' ? (
-                                        <span>⏸️ <span style={{ color: 'var(--muted)' }}>Idle</span></span>
+                                    {worker.currentJob ? (
+                                        <span>🔄 <span style={{ color: 'var(--warn)' }}>
+                                            {worker.currentJob.type}
+                                            {' '}
+                                            ({worker.currentJob.id?.substring(0, 8)}...)
+                                        </span></span>
                                     ) : (
-                                        <span>🔄 <span style={{ color: 'var(--warn)' }}>Processing {worker.currentJobId?.substring(0, 8)}...</span></span>
+                                        <span>⏸️ <span style={{ color: 'var(--muted)' }}>Idle</span></span>
                                     )}
                                 </span>
                             </div>
@@ -89,14 +56,14 @@ export function WorkerStatus({ wsMessages }) {
                                 whiteSpace: 'nowrap',
                                 border: '1px solid rgba(0, 255, 136, 0.2)',
                             }}>
-                                ✅ Healthy
+                                ✅ Active
                             </span>
                         </div>
                     ))
                 )}
             </div>
             <p style={{ fontSize: '0.75rem', color: 'var(--muted)', marginTop: '1rem' }} className="font-mono">
-                💡 Workers broadcast their status every 5 seconds. Inactive workers disappear after 15 seconds.
+                💡 Shows workers currently processing jobs. Updates every 2 seconds.
             </p>
         </div>
     );

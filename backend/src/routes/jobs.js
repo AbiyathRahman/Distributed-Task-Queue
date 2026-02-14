@@ -150,7 +150,14 @@ jobsRouter.post('/requeue/:id', async (req, res) => {
 // GET /jobs/:id - Get a specific job by ID
 jobsRouter.get('/:id', async (req, res) => {
     try {
-        const job = await db.getJob(req.params.id);
+        const { id } = req.params;
+
+        // Validate MongoDB ObjectId format (24 character hex string)
+        if (!/^[0-9a-f]{24}$/i.test(id)) {
+            return res.status(400).json({ error: 'Invalid job ID format' });
+        }
+
+        const job = await db.getJob(id);
 
         if (!job) {
             return res.status(404).json({ error: 'Job not found' });

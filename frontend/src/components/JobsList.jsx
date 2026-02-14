@@ -34,7 +34,7 @@ const getStatusIcon = (status) => {
     }
 };
 
-export function JobsList({ jobUpdated }) {
+export function JobsList() {
     const [jobs, setJobs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedJobId, setSelectedJobId] = useState(null);
@@ -52,9 +52,6 @@ export function JobsList({ jobUpdated }) {
 
     useEffect(() => {
         fetchJobs();
-    }, [jobUpdated]);
-
-    useEffect(() => {
         const interval = setInterval(fetchJobs, 3000); // Poll every 3 seconds
         return () => clearInterval(interval);
     }, []);
