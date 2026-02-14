@@ -7,13 +7,15 @@ import { WorkerStatus } from './components/WorkerStatus';
 import { DeadLetterQueue } from './components/DeadLetterQueue';
 import { useWebSocket } from './hooks/useWebSocket';
 
-const WS_URL = 'wss://distributed-task-queue-api.onrender.com/ws';
+const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3000/ws';
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000';
 
 export default function App() {
+    // Pass API_BASE so hook can check health endpoint first
+    const { messages, connected } = useWebSocket(WS_URL, API_BASE);
     const [jobCreated, setJobCreated] = useState(0);
     const [queueUpdated, setQueueUpdated] = useState(0);
-    const { messages, connected } = useWebSocket(WS_URL);
+
 
     // Listen for WebSocket events and update state
     useEffect(() => {
